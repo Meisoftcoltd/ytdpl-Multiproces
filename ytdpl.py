@@ -267,10 +267,11 @@ def handle_rate_limit_pause():
     print(f"\n\n{Colors.GREEN}▶️ Reanudando proceso...{Colors.RESET}\n")
 
 # === PYTHON NATIVE DOWNLOADERS CON SALIDA EN TIEMPO REAL Y KILL SWITCH ===
-def download_video_direct(url: str, extra_options: List[str] = None, safe_mode: bool = False) -> Optional[str]:
+def download_video_direct(url: str, extra_options: List[str] = None, safe_mode: bool = False) -> List[str]:
     platform = detect_platform(url)
     print_status(f"Descargando video de {platform}: {url[:50]}...", "processing")
     
+    existing_files = set(DOWNLOAD_DIR.glob("*"))
     base_command = [sys.executable, "-m", "yt_dlp", "--restrict-filenames", "--no-overwrites", "--ignore-errors", "--remote-components", "ejs:github", "-o", str(DOWNLOAD_DIR / "%(title)s.%(ext)s")]
     
     if safe_mode:
@@ -326,11 +327,16 @@ def download_video_direct(url: str, extra_options: List[str] = None, safe_mode: 
             print(f"{Colors.MAGENTA}--------------------------{Colors.RESET}\n")
 
             if proc.returncode == 0 and not killed_by_block:
-                video_files = [f for f in list(DOWNLOAD_DIR.glob("*.*")) if f.suffix.lower() in ['.mp4', '.mkv', '.webm', '.flv', '.mov']]
+                current_files = set(DOWNLOAD_DIR.glob("*"))
+                new_files = list(current_files - existing_files)
+                video_files = [f for f in new_files if f.suffix.lower() in ['.mp4', '.mkv', '.webm', '.flv', '.mov']]
                 if video_files:
-                    latest_file = max(video_files, key=lambda f: f.stat().st_mtime)
-                    print_status(f"Video descargado: {latest_file.name}", "success")
-                    return str(latest_file)
+                    video_files.sort(key=lambda f: f.stat().st_mtime)
+                    for f in video_files:
+                        print_status(f"Video descargado: {f.name}", "success")
+                    return [str(f) for f in video_files]
+                else:
+                    return []
             else:
                 error_msg = output.lower()
                 
@@ -349,12 +355,13 @@ def download_video_direct(url: str, extra_options: List[str] = None, safe_mode: 
         except Exception as e:
             print_status(f"Error descargando video: {e}", "error")
             break
-    return None
+    return []
 
-def download_audio_direct(url: str, extra_options: List[str] = None, safe_mode: bool = False) -> Optional[str]:
+def download_audio_direct(url: str, extra_options: List[str] = None, safe_mode: bool = False) -> List[str]:
     platform = detect_platform(url)
     print_status(f"Descargando audio de {platform}: {url[:50]}...", "processing")
     
+    existing_files = set(AUDIO_DIR.glob("*"))
     base_command = [sys.executable, "-m", "yt_dlp", "-x", "--audio-format", "mp3", "--audio-quality", "320k", "--embed-thumbnail", "--add-metadata", "--restrict-filenames", "--no-overwrites", "--ignore-errors", "--remote-components", "ejs:github", "-o", str(AUDIO_DIR / "%(title)s.%(ext)s")]
     
     if safe_mode:
@@ -408,11 +415,16 @@ def download_audio_direct(url: str, extra_options: List[str] = None, safe_mode: 
             print(f"{Colors.MAGENTA}--------------------------{Colors.RESET}\n")
 
             if proc.returncode == 0 and not killed_by_block:
-                mp3_files = list(AUDIO_DIR.glob("*.mp3"))
+                current_files = set(AUDIO_DIR.glob("*"))
+                new_files = list(current_files - existing_files)
+                mp3_files = [f for f in new_files if f.suffix.lower() == '.mp3']
                 if mp3_files:
-                    latest_file = max(mp3_files, key=lambda f: f.stat().st_mtime)
-                    print_status(f"Audio descargado: {latest_file.name}", "success")
-                    return str(latest_file)
+                    mp3_files.sort(key=lambda f: f.stat().st_mtime)
+                    for f in mp3_files:
+                        print_status(f"Audio descargado: {f.name}", "success")
+                    return [str(f) for f in mp3_files]
+                else:
+                    return []
             else:
                 error_msg = output.lower()
                 
@@ -431,7 +443,7 @@ def download_audio_direct(url: str, extra_options: List[str] = None, safe_mode: 
         except Exception as e:
             print_status(f"Error descargando audio: {e}", "error")
             break
-    return None
+    return []
 
 def download_subtitles_direct(url: str, language: str = "es", safe_mode: bool = False) -> Optional[str]:
     platform = detect_platform(url)
@@ -526,21 +538,56 @@ def download_subtitles_direct(url: str, language: str = "es", safe_mode: bool = 
 
 # === PROCESAMIENTO RESTANTE (WHISPER, DEMUCS, TRANSLATE) ===
 def _transcribe_audio_whisper_core(audio_path: str, include_description: bool = False) -> Optional[str]:
+    audio_file = Path(audio_path)
+    output_file = TRANSCRIPTIONS_DIR / f"{audio_file.stem}.txt"
+    if output_file.exists(): return str(output_file)
+
+    # Intento 1: Faster-Whisper (Prioridad)
+    try:
+        from faster_whisper import WhisperModel
+        print_status(f"Usando Faster-Whisper para: {audio_file.name}", "processing")
+
+        # Detección básica de dispositivo (aunque faster-whisper lo maneja, es bueno para el log)
+        try:
+            import torch
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+        except ImportError:
+            device = "cpu"
+
+        compute_type = "float16" if device == "cuda" else "int8"
+
+        model = WhisperModel("large-v3", device=device, compute_type=compute_type)
+        segments, info = model.transcribe(str(audio_file), beam_size=5)
+
+        final_text = ""
+        for segment in segments:
+            final_text += segment.text + " "
+        final_text = final_text.strip()
+
+        with open(output_file, "w", encoding="utf-8") as f: f.write(final_text)
+        print_status(f"Transcripción guardada (Faster-Whisper): {output_file.name}", "success")
+        return str(output_file)
+
+    except ImportError:
+        print_status("Faster-Whisper no instalado. Intentando fallback a Whisper tradicional...", "warning")
+    except Exception as e:
+        print_status(f"Error con Faster-Whisper: {e}. Intentando fallback...", "warning")
+
+    # Intento 2: Whisper Tradicional (Fallback)
     try:
         import whisper
         import torch
-        audio_file = Path(audio_path)
-        output_file = TRANSCRIPTIONS_DIR / f"{audio_file.stem}.txt"
-        if output_file.exists(): return str(output_file)
+        print_status(f"Usando Whisper tradicional para: {audio_file.name}", "processing")
+
         device = "cuda" if torch.cuda.is_available() else "cpu"
         model = whisper.load_model("large", device=device)
         result = model.transcribe(str(audio_file), language=None)
         final_text = result["text"].strip()
         with open(output_file, "w", encoding="utf-8") as f: f.write(final_text)
-        print_status(f"Transcripción guardada: {output_file.name}", "success")
+        print_status(f"Transcripción guardada (Whisper): {output_file.name}", "success")
         return str(output_file)
     except Exception as e:
-        print_status(f"Error en transcripción: {e}", "error")
+        print_status(f"Error CRÍTICO en transcripción: {e}", "error")
         return None
 
 def transcribe_audio_optimized(audio_path: str, include_description: bool = False) -> Optional[str]:
@@ -593,18 +640,50 @@ def extract_voice_optimized(audio_path: str) -> Optional[str]:
     audio_file = Path(audio_path)
     output_file = VOCALS_DIR / f"{audio_file.stem}_vocals.mp3"
     if output_file.exists(): return str(output_file)
+
     try:
         import torch
         device = "cuda" if torch.cuda.is_available() else "cpu"
-    except: device = "cpu"
+    except ImportError:
+        device = "cpu"
+
+    print_status(f"Iniciando separación de voz con Demucs para: {audio_file.name}", "processing")
+
     command = ["demucs", "--two-stems=vocals", "-n", "htdemucs_ft", "--device", device, "--shifts", "1", "--overlap", "0.25", "--mp3", "--mp3-bitrate", "320", "-o", str(VOCALS_DIR), str(audio_file)]
+
     try:
-        if subprocess.run(command, capture_output=True, text=True, timeout=600, cwd=str(PROJECT_DIR)).returncode == 0:
-            for root, dirs, files in os.walk(VOCALS_DIR):
-                if "vocals.mp3" in files:
-                    shutil.move(str(Path(root) / "vocals.mp3"), str(output_file))
-                    return str(output_file)
-    except: pass
+        subprocess.run(command, capture_output=True, text=True, timeout=1200, cwd=str(PROJECT_DIR), check=True)
+
+        model_dir = VOCALS_DIR / "htdemucs_ft"
+
+        # Intentar predecir la ruta (Demucs a veces sanea nombres)
+        expected_track_dir = model_dir / audio_file.stem
+        candidate = expected_track_dir / "vocals.mp3"
+
+        if not candidate.exists():
+            # Búsqueda de respaldo en el directorio del modelo
+            candidates = list(model_dir.glob("**/vocals.mp3"))
+            if candidates:
+                candidate = max(candidates, key=lambda f: f.stat().st_mtime)
+
+        if candidate and candidate.exists():
+            shutil.move(str(candidate), str(output_file))
+            print_status(f"Voces extraídas: {output_file.name}", "success")
+
+            # Limpieza
+            try:
+                if candidate.parent.exists(): shutil.rmtree(candidate.parent)
+                if model_dir.exists() and not any(model_dir.iterdir()): model_dir.rmdir()
+            except: pass
+
+            return str(output_file)
+        else:
+            print_status("Demucs finalizó pero no se encontró el archivo de salida.", "error")
+
+    except subprocess.CalledProcessError as e:
+        print_status(f"Error ejecutando Demucs: {e.stderr}", "error")
+    except Exception as e:
+        print_status(f"Error inesperado en separación de voz: {e}", "error")
     return None
 
 def process_single_file(args: Tuple[str, Dict]) -> Dict:
@@ -749,12 +828,18 @@ def main():
             if config.get('download_thumbnail'): options.append("--write-thumbnail")
             if config.get('download_description'): options.append("--write-description")
             
-            file = None
-            if config['operations']['download_video']: file = download_video_direct(config['url'], options, safe_mode)
-            elif config['operations']['download_audio']: file = download_audio_direct(config['url'], options, safe_mode)
+            files = []
+            if config['operations']['download_video']:
+                files = download_video_direct(config['url'], options, safe_mode)
+            elif config['operations']['download_audio']:
+                files = download_audio_direct(config['url'], options, safe_mode)
             
-            if file: process_single_file((file, config['operations']))
-            else: print_status("Fallo al obtener archivo inicial.", "error")
+            if files:
+                print_status(f"Se procesarán {len(files)} archivos nuevos.", "info")
+                for file in files:
+                    process_single_file((file, config['operations']))
+            else:
+                print_status("No se descargaron nuevos archivos.", "warning")
             
         print(f"\n{Colors.GREEN}🎉 ¡Procesamiento completado!{Colors.RESET}")
         
