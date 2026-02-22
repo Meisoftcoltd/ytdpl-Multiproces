@@ -686,6 +686,33 @@ def extract_voice_optimized(audio_path: str) -> Optional[str]:
         print_status(f"Error inesperado en separación de voz: {e}", "error")
     return None
 
+def unify_transcriptions(paths: List[str], keep_individual: bool):
+    print_status("Unificando transcripciones...", "processing")
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    unified_file = TRANSCRIPTIONS_DIR / f"transcripcion_unificada_{timestamp}.txt"
+
+    try:
+        with open(unified_file, "w", encoding="utf-8") as outfile:
+            for t_path in paths:
+                try:
+                    with open(t_path, "r", encoding="utf-8") as infile:
+                        outfile.write(infile.read() + "\n")
+                except Exception as e:
+                    print_status(f"Error leyendo {t_path}: {e}", "warning")
+
+        print_status(f"Transcripción unificada guardada: {unified_file.name}", "success")
+
+        if not keep_individual:
+            for t_path in paths:
+                try:
+                    os.remove(t_path)
+                except Exception as e:
+                    print_status(f"No se pudo borrar {t_path}: {e}", "warning")
+            print_status("Archivos individuales eliminados.", "info")
+
+    except Exception as e:
+        print_status(f"Error al crear archivo unificado: {e}", "error")
+
 def process_single_file(args: Tuple[str, Dict]) -> Dict:
     file_path, operations = args
     results = {'success': False, 'errors': []}
@@ -718,7 +745,10 @@ def process_single_file(args: Tuple[str, Dict]) -> Dict:
             if subs and operations.get('translate_subtitles', False): translate_subtitle_file(subs, operations.get('target_lang', 'en'))
                 
         if operations.get('extract_voice', False) and current_audio_path: extract_voice_optimized(current_audio_path)
-        if operations.get('transcribe', False) and current_audio_path: transcribe_audio_optimized(current_audio_path)
+        if operations.get('transcribe', False) and current_audio_path:
+            trans_path = transcribe_audio_optimized(current_audio_path)
+            if trans_path:
+                results['transcription_path'] = trans_path
         
         results['success'] = True
     except Exception as e: results['errors'].append(str(e))
@@ -789,6 +819,18 @@ def get_user_input():
         'transcribe': t, 'download_subtitles': s, 'translate_subtitles': ts,
         'open_browser': False
     }
+
+    if choice == "4":
+        print(f"\n{Colors.CYAN}📝 Configuración de Transcripción:{Colors.RESET}")
+        print("  1. Individual (Un archivo por audio)")
+        print("  2. Unificada (Un solo archivo con todo)")
+        transcribe_mode = input(f"{Colors.CYAN}Selecciona modo [1-2]: {Colors.RESET}").strip()
+
+        config['operations']['transcribe_mode'] = 'unified' if transcribe_mode == '2' else 'individual'
+
+        if config['operations']['transcribe_mode'] == 'unified':
+            keep = input(f"¿Conservar archivos individuales también? [s/N]: ").strip().lower()
+            config['operations']['keep_individual'] = keep == 's'
     
     if s:
         print("\n  1. Descargar subtítulos del video \n  2. Generar subtítulos con Whisper")
@@ -836,8 +878,14 @@ def main():
             
             if files:
                 print_status(f"Se procesarán {len(files)} archivos nuevos.", "info")
+                transcription_paths = []
                 for file in files:
-                    process_single_file((file, config['operations']))
+                    result = process_single_file((file, config['operations']))
+                    if result.get('transcription_path'):
+                        transcription_paths.append(result['transcription_path'])
+
+                if config['operations'].get('transcribe_mode') == 'unified' and transcription_paths:
+                    unify_transcriptions(transcription_paths, config['operations'].get('keep_individual', True))
             else:
                 print_status("No se descargaron nuevos archivos.", "warning")
             
