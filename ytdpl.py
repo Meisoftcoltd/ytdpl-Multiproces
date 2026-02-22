@@ -158,6 +158,9 @@ def check_dependencies():
     if not shutil.which("deno"):
         print_status("⚠️ DENO NO ENCONTRADO. El motor JS es obligatorio.", "warning")
         print_status("👉 Ejecuta esto en tu terminal: curl -fsSL https://deno.land/install.sh | sh", "error")
+    if not shutil.which("demucs"):
+        print_status("⚠️ DEMUCS NO ENCONTRADO. No podrás separar voces.", "warning")
+        print_status("👉 Instálalo con: pip install -U demucs", "info")
     print_status("Dependencias críticas verificadas", "success")
 
 def get_next_chromium_profile():
