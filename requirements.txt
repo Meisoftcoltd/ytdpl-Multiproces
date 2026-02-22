@@ -1,0 +1,186 @@
+# Requirements.txt optimizado para procesamiento de audio de alta velocidad
+# Versiones probadas y estables para máximo rendimiento
+# Compatible con Python 3.8+
+
+# === CORE AUDIO PROCESSING (Optimizado) ===
+# faster-whisper: 4x más rápido que openai-whisper
+faster-whisper>=1.0.0
+
+# yt-dlp: Última versión con optimizaciones
+yt-dlp>=2024.10.22
+
+# Demucs: Separación de audio de última generación
+demucs>=4.0.1
+
+# FFmpeg wrapper para Python
+ffmpeg-python>=0.2.0
+
+# === MACHINE LEARNING BACKENDS ===
+# PyTorch: Base para Whisper y Demucs
+torch>=2.4.1
+torchaudio>=2.4.1
+
+# Transformers (si necesitas compatibilidad adicional)
+transformers>=4.35.0
+
+# === PROCESAMIENTO PARALELO Y RENDIMIENTO ===
+# Barras de progreso optimizadas
+tqdm>=4.67.1
+
+# Monitor de recursos del sistema
+psutil>=5.9.0
+
+# Procesamiento numérico optimizado
+numpy>=1.24.4
+
+# === MANIPULACIÓN DE ARCHIVOS Y METADATOS ===
+# Metadatos de archivos de audio
+mutagen>=1.47.0
+
+# Manejo de rutas multiplataforma
+pathlib2>=2.3.7; python_version<"3.4"
+
+# Compresión y archivos
+packaging>=25.0
+
+# Nota: concurrent.futures está incluido en Python 3.2+
+# Nota: pathlib está incluido en Python 3.4+
+
+# === UTILIDADES DE DESARROLLO ===
+# CLI frameworks
+click>=8.1.6
+
+# Colores en terminal multiplataforma
+colorama>=0.4.6
+
+# Configuración y logging
+pyyaml>=6.0.2
+
+# Fechas y tiempo
+python-dateutil>=2.9.0
+
+# === DEPENDENCIAS DE AUDIO ADICIONALES (OPCIONALES) ===
+# Análisis avanzado de audio (opcional pero recomendado)
+librosa>=0.10.0; extra == "advanced"
+soundfile>=0.12.1; extra == "advanced"
+
+# Procesamiento de señales
+scipy>=1.10.1
+
+# === DEPENDENCIAS DE GPU (AUTOMÁTICAS) ===
+# NVIDIA CUDA (se instalan automáticamente con PyTorch CUDA)
+# nvidia-cublas-cu12>=12.1.3.1
+# nvidia-cuda-cupti-cu12>=12.1.105
+# nvidia-cuda-nvrtc-cu12>=12.1.105  
+# nvidia-cuda-runtime-cu12>=12.1.105
+# nvidia-cudnn-cu12>=9.1.0.70
+
+# === DEPENDENCIAS DE COMPATIBILIDAD ===
+# Para WSL y sistemas híbridos
+charset-normalizer>=3.4.2
+certifi>=2025.4.26
+
+# Compatibilidad de red
+requests>=2.32.3
+urllib3>=2.2.3
+
+# === HERRAMIENTAS DE DEBUGGING (DESARROLLO) ===
+# ipython>=8.0.0; extra == "dev"
+# jupyter>=1.0.0; extra == "dev"
+# matplotlib>=3.7.0; extra == "dev"
+
+# === NOTAS DE INSTALACIÓN ===
+# Para instalar con dependencias básicas:
+#   pip install -r requirements.txt
+#
+# Para instalar con funciones avanzadas:
+#   pip install -r requirements.txt -E advanced
+#
+# Para desarrollo:
+#   pip install -r requirements.txt -E dev
+#
+# Para máximo rendimiento en GPU:
+#   pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu121
+#   pip install -r requirements.txt
+#
+# Para máximo rendimiento en CPU:
+#   pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+#   pip install -r requirements.txt
+
+# === COMPATIBILIDAD DE VERSIONES ===
+# Probado en:
+# - Ubuntu 20.04, 22.04, 24.04
+# - Debian 11, 12
+# - Fedora 38, 39
+# - Arch Linux (rolling)
+# - WSL2 Ubuntu
+# - macOS 12+ (con algunas limitaciones)
+
+# === REQUERIMIENTOS DE SISTEMA ===
+# RAM mínima: 4GB (8GB recomendado)
+# Espacio en disco: 10GB libres
+# CPU: 4+ cores recomendado para paralelización
+# GPU: NVIDIA con 4GB+ VRAM (opcional pero recomendado)
+
+# === DEPENDENCIAS DE AUDIO ADICIONALES (OPCIONALES) ===
+# Análisis avanzado de audio (opcional pero recomendado)
+librosa>=0.10.0; extra == "advanced"
+soundfile>=0.12.1; extra == "advanced"
+
+# Procesamiento de señales
+scipy>=1.10.1
+
+# === DEPENDENCIAS DE GPU (AUTOMÁTICAS) ===
+# NVIDIA CUDA (se instalan automáticamente con PyTorch CUDA)
+# nvidia-cublas-cu12>=12.1.3.1
+# nvidia-cuda-cupti-cu12>=12.1.105
+# nvidia-cuda-nvrtc-cu12>=12.1.105  
+# nvidia-cuda-runtime-cu12>=12.1.105
+# nvidia-cudnn-cu12>=9.1.0.70
+
+# === DEPENDENCIAS DE COMPATIBILIDAD ===
+# Para WSL y sistemas híbridos
+charset-normalizer>=3.4.2
+certifi>=2025.4.26
+
+# Compatibilidad de red
+requests>=2.32.3
+urllib3>=2.2.3
+
+# === HERRAMIENTAS DE DEBUGGING (DESARROLLO) ===
+# ipython>=8.0.0; extra == "dev"
+# jupyter>=1.0.0; extra == "dev"
+# matplotlib>=3.7.0; extra == "dev"
+
+# === NOTAS DE INSTALACIÓN ===
+# Para instalar con dependencias básicas:
+#   pip install -r requirements.txt
+#
+# Para instalar con funciones avanzadas:
+#   pip install -r requirements.txt -E advanced
+#
+# Para desarrollo:
+#   pip install -r requirements.txt -E dev
+#
+# Para máximo rendimiento en GPU:
+#   pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu121
+#   pip install -r requirements.txt
+#
+# Para máximo rendimiento en CPU:
+#   pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+#   pip install -r requirements.txt
+
+# === COMPATIBILIDAD DE VERSIONES ===
+# Probado en:
+# - Ubuntu 20.04, 22.04, 24.04
+# - Debian 11, 12
+# - Fedora 38, 39
+# - Arch Linux (rolling)
+# - WSL2 Ubuntu
+# - macOS 12+ (con algunas limitaciones)
+
+# === REQUERIMIENTOS DE SISTEMA ===
+# RAM mínima: 4GB (8GB recomendado)
+# Espacio en disco: 10GB libres
+# CPU: 4+ cores recomendado para paralelización
+# GPU: NVIDIA con 4GB+ VRAM (opcional pero recomendado)
